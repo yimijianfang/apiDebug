@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta http-equiv="content-type" content="text/html;charset=utf-8">
+    <link href="./main.css" rel="stylesheet" type="text/css" />
+    <script src='https://cdn.bootcss.com/socket.io/2.0.3/socket.io.js'></script>
+    <script src='https://cdn.bootcss.com/jquery/1.11.3/jquery.js'></script>
+    <link href="./css/jquery.json-viewer.css" type="text/css" rel="stylesheet" />
+    <script src="./js/jquery.json-viewer.js"></script>
+    <script src='./notify.js'></script>
+    <style type="text/css">
+        .jsons {
+            /* border-bottom: 2px solid red; */
+        }
+
+        .jsons>span {
+            color: red;
+            font-size: 15px
+        }
+
+        .jsons_url {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+    </style>
+    <style>
+        .jsons {}
+
+        .jsons .title {
+            height: 40px;
+            line-height: 40px;
+            background: #d1d4d6;
+            border-radius: 2px;
+            border: 1px solid #9FA1A2;
+            max-width: 1000px
+        }
+
+        .title>.method {
+            width: 100px;
+            text-align: center;
+            display: inline-block;
+            font-weight: 600;
+            font-size: 13px;
+            border-right: 1px solid #9FA1A2;
+            box-sizing: border-box;
+
+        }
+
+        .title>.apiurl {
+            margin-left: -4px;
+            width: calc(100% - 200px);
+            height: 100%;
+            box-sizing: border-box;
+            border: none;
+            padding: 0 0 0 12px;
+            background: #d1d4d6
+        }
+
+
+
+        .title>.apiurl:hover {
+            background: #E7E8E8
+        }
+
+        .title>.apiurl:focus {
+            background: #F4F4F4;
+            outline: none;
+        }
+
+        .title>.time {
+            width: 96px;
+            text-align: center;
+            display: inline-block;
+            font-weight: 600;
+            font-size: 13px;
+            box-sizing: border-box;
+        }
+
+        .request_warper {}
+
+        .request_warper>.request_name {
+            display: inline-block;
+            margin: 3px 0;
+            border-bottom: 3px solid #F7670E;
+            padding: 5px 2px;
+        }
+
+        .request_warper>.request {}
+    </style>
+</head>
+
+<body>
+
+    <div class="notification sticky hide">
+        <p id="content"> </p>
+        <a class="close" href="javascript:">
+            <img src="/icon-close.png" />
+        </a>
+    </div>
+    <div class="wrapper">
+        <div style="">
+            <div>
+                <input id='apiurl' type="text" name="">
+                <input id='change' type="button" name="" value="修改接口地址"> &nbsp;&nbsp;&nbsp;&nbsp;
+                <br/>
+                <input id="start" type="button" name="" value="暂停">
+                <input id="clearall" type="button" name="" value="清空">
+            </div>
+            <div id="json-renderer" style="margin-left: 30px">
+                <div class="jsons">
+                    <div class="title">
+                        <span class="method">POST</span>
+                        <input type="text" class="apiurl" value="http://devgateway.gwmfc.com/connect/token">
+                        <span class="time">15:28:22</span>
+                    </div>
+                    <hr>
+                    <div class="request_warper">
+                        <div class="request_name">request</div>
+                        <div class="request"></div>
+                    </div>
+                    <div class="response_warper">
+                        <div class="request_name">request</div>
+                        <div class="response"></div>
+                    </div>
+                </div>
+                <div style="display: none" class="jsons">
+                    <span>时间</span>
+                    <pre class="jsons_time"></pre>
+                    <span>token</span>
+                    <pre class="jsons_token"></pre>
+                    <span>请求地址</span>
+                    <pre class="jsons_url"></pre>
+                    <span>请求</span>
+                    <pre class="jsons_head"></pre>
+                    <span>响应</span>
+                    <pre class="jsons_body"></pre>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            var apiurl = '';//监听地址
+            var status = 1;//是否开始
+            var projectId = 0;//项目id
+            projectId = getQueryStringByName('id');
+            $("input.project").eq(projectId).css('color', 'red');
+            html = '<div style="display: none" class="jsons"><span>时间</span><pre class="jsons_time"></pre><span>token</span><pre class="jsons_token"></pre><span>请求地址</span><pre class="jsons_url"></pre><span>请求</span><pre class="jsons_head"></pre><span>响应</span><pre class="jsons_body"></pre></div>';
+            function show(jjj) {
+                try {
+                    var input = eval('(' + jjj + ')');
+                }
+                catch (error) {
+                    return;
+                    //return alert("json解析失败: " + error);
+                }
+                var options = {
+                    collapsed: false,
+                    withQuotes: true
+                };
+                if (status == 1 && (!apiurl || input.apiurl.indexOf(apiurl)) != -1) {
+                    if (projectId == 0 || projectId == input.id) {
+                        $(".jsons").eq(0).show();
+                        if (!(typeof input.token == 'undefined')) {
+                            $('.jsons_token').eq(0).html(input.token);
+                        }
+                        myDate = new Date();
+                        $('.jsons_time').eq(0).html(myDate.getHours() + ':' + myDate.getMinutes().toString().padStart(2, "0") + ':' + myDate.getSeconds().toString().padStart(2, "0"));
+                        $('.jsons_url').eq(0).html(input.apiurl);
+                        $('.jsons_head').eq(0).jsonViewer(JSON.parse(input.request) || {}, options);
+                        $('.jsons_body').eq(0).jsonViewer(input.response, options);
+                        $('#json-renderer').prepend(html);
+                    }
+                }
+            }
+            // 解码  
+            function escape2Html(str) {
+                var arrEntities = { 'lt': '<', 'gt': '>', 'nbsp': ' ', 'amp': '&', 'quot': '"' };
+                return str.replace(/&(lt|gt|nbsp|amp|quot);/ig, function (all, t) { return arrEntities[t]; });
+            }
+            //get QueryString
+            function getQueryStringByName(name) {
+                var result = location.search.match(new RegExp("[\?\&]" + name + "=([^\&]+)", "i"));
+                if (result == null || result.length < 1) {
+                    return 0;
+                }
+                return result[1];
+            }
+            var tmpInterval, ws;
+            var url = "ws://10.50.130.62:8888";
+            $(document).ready(function () {
+                new socket(url)
+            });
+            function socket(url) {
+                var ws = new WebSocket(url);
+                ws.onopen = function () {
+                    console.log("客户端已连接");
+                    tmpInterval && clearTimeout(tmpInterval) && (tmpInterval = undefined)
+                };
+                ws.onmessage = function (evt) {
+                    msg = evt.data;
+                    show(msg);
+                };
+                ws.onclose = function () {
+                    console.log("客户端已断开连接");
+                    tmpInterval = setTimeout(function () {
+                        new socket(url)
+                    }, 1000)
+                };
+                ws.onerror = function (evt) {
+                    console.log("错误");
+                };
+            }
+        </script>
+        <script type="text/javascript">
+            $("#change").click(function () {
+                apiurl = $("#apiurl").val();
+            })
+            $("#start").click(function () {
+                if (status == 1) {
+                    status = 0;
+                    $("#start").val('开始');
+                } else {
+                    status = 1;
+                    $("#start").val('暂停');
+                }
+            })
+            $("#clearall").click(function () {
+                $('#json-renderer').empty().prepend(html);
+            })
+        </script>
+        <div id="footer">
+            <center id="online_box"></center>
+        </div>
+</body>
+
+</html>
